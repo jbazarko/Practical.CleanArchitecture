@@ -12,7 +12,7 @@ const Timer = () => {
     const currentDateTime = new Date();
     setYears(currentDateTime.getFullYear());
     setMonths(currentDateTime.getMonth() + 1);
-    setDays(currentDateTime.getDay());
+    setDays(currentDateTime.getDate());
     setHours(currentDateTime.getHours());
     setMinutes(currentDateTime.getMinutes());
     setSeconds(currentDateTime.getSeconds());
