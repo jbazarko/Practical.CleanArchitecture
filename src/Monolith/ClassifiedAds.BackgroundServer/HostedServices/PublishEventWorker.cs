@@ -1,4 +1,5 @@
-﻿using ClassifiedAds.Application.EventLogs;
+﻿using ClassifiedAds.Application;
+using ClassifiedAds.Application.EventLogs.Commands;
 using ClassifiedAds.CrossCuttingConcerns.CircuitBreakers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -7,60 +8,59 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ClassifiedAds.BackgroundServer.HostedServices
+namespace ClassifiedAds.BackgroundServer.HostedServices;
+
+public class PublishEventWorker : BackgroundService
 {
-    public class PublishEventWorker : BackgroundService
+    private readonly IServiceProvider _services;
+    private readonly ILogger<PublishEventWorker> _logger;
+
+    public PublishEventWorker(IServiceProvider services,
+        ILogger<PublishEventWorker> logger)
     {
-        private readonly IServiceProvider _services;
-        private readonly ILogger<PublishEventWorker> _logger;
+        _services = services;
+        _logger = logger;
+    }
 
-        public PublishEventWorker(IServiceProvider services,
-            ILogger<PublishEventWorker> logger)
-        {
-            _services = services;
-            _logger = logger;
-        }
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogDebug("PushlishEventWorker is starting.");
+        await DoWork(stoppingToken);
+    }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    private async Task DoWork(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
         {
-            _logger.LogDebug("PushlishEventWorker is starting.");
-            await DoWork(stoppingToken);
-        }
+            _logger.LogDebug($"PushlishEvent task doing background work.");
 
-        private async Task DoWork(CancellationToken stoppingToken)
-        {
-            while (!stoppingToken.IsCancellationRequested)
+            try
             {
-                _logger.LogDebug($"PushlishEvent task doing background work.");
+                var publishEventsCommand = new PublishEventsCommand();
 
-                int rs = 0;
-
-                try
+                using (var scope = _services.CreateScope())
                 {
-                    using (var scope = _services.CreateScope())
-                    {
-                        var emailService = scope.ServiceProvider.GetRequiredService<PublishEventService>();
+                    var dispatcher = scope.ServiceProvider.GetRequiredService<Dispatcher>();
 
-                        rs = await emailService.PublishEvents();
-                    }
-
-                    if (rs == 0)
-                    {
-                        await Task.Delay(10000, stoppingToken);
-                    }
+                    await dispatcher.DispatchAsync(publishEventsCommand, stoppingToken);
                 }
-                catch (CircuitBreakerOpenException)
+
+                if (publishEventsCommand.SentEventsCount == 0)
                 {
-                    await Task.Delay(10000, stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"");
                     await Task.Delay(10000, stoppingToken);
                 }
             }
-
-            _logger.LogDebug($"PushlishEventWorker background task is stopping.");
+            catch (CircuitBreakerOpenException)
+            {
+                await Task.Delay(10000, stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"");
+                await Task.Delay(10000, stoppingToken);
+            }
         }
+
+        _logger.LogDebug($"PushlishEventWorker background task is stopping.");
     }
 }

@@ -1,15 +1,14 @@
-﻿using ClassifiedAds.CrossCuttingConcerns.OS;
+﻿using ClassifiedAds.CrossCuttingConcerns.DateTimes;
 using ClassifiedAds.Modules.Notification.Entities;
 using System;
 
-namespace ClassifiedAds.Modules.Notification.Repositories
+namespace ClassifiedAds.Modules.Notification.Repositories;
+
+public class SmsMessageRepository : Repository<SmsMessage, Guid>, ISmsMessageRepository
 {
-    public class SmsMessageRepository : Repository<SmsMessage, Guid>, ISmsMessageRepository
+    public SmsMessageRepository(NotificationDbContext dbContext,
+        IDateTimeProvider dateTimeProvider)
+        : base(dbContext, dateTimeProvider)
     {
-        public SmsMessageRepository(NotificationDbContext dbContext,
-            IDateTimeProvider dateTimeProvider)
-            : base(dbContext, dateTimeProvider)
-        {
-        }
     }
 }

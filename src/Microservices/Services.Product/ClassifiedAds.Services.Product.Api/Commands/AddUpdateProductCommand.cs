@@ -1,26 +1,26 @@
 ﻿using ClassifiedAds.Application;
+using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ClassifiedAds.Services.Product.Commands
+namespace ClassifiedAds.Services.Product.Commands;
+
+public class AddUpdateProductCommand : IRequest
 {
-    public class AddUpdateProductCommand : ICommand
+    public Entities.Product Product { get; set; }
+}
+
+public class AddUpdateProductCommandHandler : IRequestHandler<AddUpdateProductCommand>
+{
+    private readonly ICrudService<Entities.Product> _productService;
+
+    public AddUpdateProductCommandHandler(ICrudService<Entities.Product> productService)
     {
-        public Entities.Product Product { get; set; }
+        _productService = productService;
     }
 
-    public class AddUpdateProductCommandHandler : ICommandHandler<AddUpdateProductCommand>
+    public async Task Handle(AddUpdateProductCommand command, CancellationToken cancellationToken = default)
     {
-        private readonly ICrudService<Entities.Product> _productService;
-
-        public AddUpdateProductCommandHandler(ICrudService<Entities.Product> productService)
-        {
-            _productService = productService;
-        }
-
-        public async Task HandleAsync(AddUpdateProductCommand command, CancellationToken cancellationToken = default)
-        {
-            await _productService.AddOrUpdateAsync(command.Product);
-        }
+        await _productService.AddOrUpdateAsync(command.Product);
     }
 }

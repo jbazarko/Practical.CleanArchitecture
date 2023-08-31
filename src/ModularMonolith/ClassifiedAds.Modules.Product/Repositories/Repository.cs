@@ -1,15 +1,14 @@
-﻿using ClassifiedAds.CrossCuttingConcerns.OS;
+﻿using ClassifiedAds.CrossCuttingConcerns.DateTimes;
 using ClassifiedAds.Domain.Entities;
 using ClassifiedAds.Infrastructure.Persistence;
 
-namespace ClassifiedAds.Modules.Product.Repositories
+namespace ClassifiedAds.Modules.Product.Repositories;
+
+public class Repository<T, TKey> : DbContextRepository<ProductDbContext, T, TKey>
+    where T : Entity<TKey>, IAggregateRoot
 {
-    public class Repository<T, TKey> : DbContextRepository<ProductDbContext, T, TKey>
-        where T : AggregateRoot<TKey>
+    public Repository(ProductDbContext dbContext, IDateTimeProvider dateTimeProvider)
+        : base(dbContext, dateTimeProvider)
     {
-        public Repository(ProductDbContext dbContext, IDateTimeProvider dateTimeProvider)
-            : base(dbContext, dateTimeProvider)
-        {
-        }
     }
 }

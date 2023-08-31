@@ -1,52 +1,40 @@
-﻿using ClassifiedAds.Infrastructure.Monitoring.AppMetrics;
-using ClassifiedAds.Infrastructure.Monitoring.AzureApplicationInsights;
+﻿using ClassifiedAds.Infrastructure.Monitoring.AzureApplicationInsights;
 using ClassifiedAds.Infrastructure.Monitoring.MiniProfiler;
+using ClassifiedAds.Infrastructure.Monitoring.OpenTelemetry;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace ClassifiedAds.Infrastructure.Monitoring
+namespace ClassifiedAds.Infrastructure.Monitoring;
+
+public static class MonitoringExtensions
 {
-    public static class MonitoringExtensions
+    public static IServiceCollection AddMonitoringServices(this IServiceCollection services, MonitoringOptions monitoringOptions = null)
     {
-        public static IServiceCollection AddMonitoringServices(this IServiceCollection services, MonitoringOptions monitoringOptions = null)
+        if (monitoringOptions?.MiniProfiler?.IsEnabled ?? false)
         {
-            if (monitoringOptions?.MiniProfiler?.IsEnabled ?? false)
-            {
-                services.AddMiniProfiler(monitoringOptions.MiniProfiler);
-            }
-
-            if (monitoringOptions?.AzureApplicationInsights?.IsEnabled ?? false)
-            {
-                services.AddAzureApplicationInsights(monitoringOptions.AzureApplicationInsights);
-            }
-
-            if (monitoringOptions?.AppMetrics?.IsEnabled ?? false)
-            {
-                services.AddAppMetrics(monitoringOptions.AppMetrics);
-            }
-
-            return services;
+            services.AddMiniProfiler(monitoringOptions.MiniProfiler);
         }
 
-        public static IMvcBuilder AddMonitoringServices(this IMvcBuilder mvcBuilder, MonitoringOptions monitoringOptions)
+        if (monitoringOptions?.AzureApplicationInsights?.IsEnabled ?? false)
         {
-            if (monitoringOptions?.AppMetrics?.IsEnabled ?? false)
-            {
-                mvcBuilder.AddMetrics();
-            }
-
-            return mvcBuilder;
+            services.AddAzureApplicationInsights(monitoringOptions.AzureApplicationInsights);
         }
 
-        public static IApplicationBuilder UseMonitoringServices(this IApplicationBuilder builder, MonitoringOptions monitoringOptions)
+        if (monitoringOptions?.OpenTelemetry?.IsEnabled ?? false)
         {
-            if (monitoringOptions?.MiniProfiler?.IsEnabled ?? false)
-            {
-                builder.UseMiniProfiler();
-            }
-
-            return builder;
+            services.AddClassifiedAdsOpenTelemetry(monitoringOptions.OpenTelemetry);
         }
+
+        return services;
+    }
+
+    public static IApplicationBuilder UseMonitoringServices(this IApplicationBuilder builder, MonitoringOptions monitoringOptions)
+    {
+        if (monitoringOptions?.MiniProfiler?.IsEnabled ?? false)
+        {
+            builder.UseMiniProfiler();
+        }
+
+        return builder;
     }
 }

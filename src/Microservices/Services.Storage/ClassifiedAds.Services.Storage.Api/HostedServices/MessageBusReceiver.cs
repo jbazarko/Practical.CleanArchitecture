@@ -1,48 +1,53 @@
 ﻿using ClassifiedAds.Domain.Infrastructure.MessageBrokers;
 using ClassifiedAds.Services.Storage.DTOs;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ClassifiedAds.Services.Storage.HostedServices
+namespace ClassifiedAds.Services.Storage.HostedServices;
+
+internal class MessageBusReceiver : BackgroundService
 {
-    internal class MessageBusReceiver : BackgroundService
+    private static readonly HttpClient _httpClient = new HttpClient();
+
+    private readonly ILogger<MessageBusReceiver> _logger;
+    private readonly IConfiguration _configuration;
+    private readonly IMessageReceiver<WebhookConsumer, FileUploadedEvent> _fileUploadedEventMessageReceiver;
+    private readonly IMessageReceiver<WebhookConsumer, FileDeletedEvent> _fileDeletedEventMessageReceiver;
+
+    public MessageBusReceiver(ILogger<MessageBusReceiver> logger,
+        IConfiguration configuration,
+        IMessageReceiver<WebhookConsumer, FileUploadedEvent> fileUploadedEventMessageReceiver,
+        IMessageReceiver<WebhookConsumer, FileDeletedEvent> fileDeletedEventMessageReceiver)
     {
-        private readonly ILogger<MessageBusReceiver> _logger;
-        private readonly IMessageReceiver<FileUploadedEvent> _fileUploadedEventMessageReceiver;
-        private readonly IMessageReceiver<FileDeletedEvent> _fileDeletedEventMessageReceiver;
-
-        public MessageBusReceiver(ILogger<MessageBusReceiver> logger,
-            IMessageReceiver<FileUploadedEvent> fileUploadedEventMessageReceiver,
-            IMessageReceiver<FileDeletedEvent> fileDeletedEventMessageReceiver)
-        {
-            _logger = logger;
-            _fileUploadedEventMessageReceiver = fileUploadedEventMessageReceiver;
-            _fileDeletedEventMessageReceiver = fileDeletedEventMessageReceiver;
-        }
-
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            _fileUploadedEventMessageReceiver?.Receive(async (data, metaData) =>
-            {
-                string message = data.FileEntry.Id.ToString();
-
-                _logger.LogInformation(message);
-
-                await Task.Delay(5000); // simulate long running task
-            });
-
-            _fileDeletedEventMessageReceiver?.Receive(async (data, metaData) =>
-            {
-                string message = data.FileEntry.Id.ToString();
-
-                _logger.LogInformation(message);
-
-                await Task.Delay(5000); // simulate long running task
-            });
-
-            return Task.CompletedTask;
-        }
+        _logger = logger;
+        _configuration = configuration;
+        _fileUploadedEventMessageReceiver = fileUploadedEventMessageReceiver;
+        _fileDeletedEventMessageReceiver = fileDeletedEventMessageReceiver;
     }
+
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _fileUploadedEventMessageReceiver?.ReceiveAsync(async (data, metaData) =>
+        {
+            var url = _configuration["Webhooks:FileUploadedEvent:PayloadUrl"];
+            await _httpClient.PostAsJsonAsync(url, data.FileEntry);
+        }, stoppingToken);
+
+        _fileDeletedEventMessageReceiver?.ReceiveAsync(async (data, metaData) =>
+        {
+            var url = _configuration["Webhooks:FileDeletedEvent:PayloadUrl"];
+            await _httpClient.PostAsJsonAsync(url, data.FileEntry);
+        }, stoppingToken);
+
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class WebhookConsumer
+{
 }

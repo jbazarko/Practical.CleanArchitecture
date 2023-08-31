@@ -1,42 +1,57 @@
-﻿using ClassifiedAds.Infrastructure.Web.Authorization.Policies;
+﻿using ClassifiedAds.Infrastructure.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace Microsoft.Extensions.DependencyInjection
+namespace Microsoft.Extensions.DependencyInjection;
+
+public static class PolicyServiceCollectionExtensions
 {
-    public static class PolicyServiceCollectionExtensions
+    public static IServiceCollection AddAuthorizationPolicies(this IServiceCollection services, Assembly assembly, IEnumerable<string> policies)
     {
-        public static IServiceCollection AddAuthorizationPolicies(this IServiceCollection services, Assembly assembly)
+        services.Configure<AuthorizationOptions>(options =>
         {
-            services.Configure<AuthorizationOptions>(options =>
+            foreach (var policyName in policies)
             {
-                var policyTypes = assembly.GetTypes().Where(t => t.GetInterfaces().Any(i => i == typeof(IPolicy))).ToList();
-
-                foreach (var type in policyTypes)
+                options.AddPolicy(policyName, policy =>
                 {
-                    var obj = (IPolicy)Activator.CreateInstance(type);
-
-                    var policyName = type.FullName;
-
-                    options.AddPolicy(policyName, policy =>
+                    policy.AddRequirements(new PermissionRequirement
                     {
-                        obj.Configure(policy);
+                        PermissionName = policyName
                     });
-                }
-            });
-
-            var requirementHandlerTypes = assembly.GetTypes()
-                .Where(t => t.BaseType != null && t.BaseType.IsGenericType && t.BaseType.GetGenericTypeDefinition() == typeof(AuthorizationHandler<>))
-                .ToList();
-
-            foreach (var type in requirementHandlerTypes)
-            {
-                services.AddSingleton(typeof(IAuthorizationHandler), type);
+                });
             }
+        });
 
-            return services;
+        services.AddSingleton(typeof(IAuthorizationHandler), typeof(PermissionRequirementHandler));
+
+        var requirementHandlerTypes = assembly.GetTypes()
+            .Where(IsAuthorizationHandler)
+            .ToList();
+
+        foreach (var type in requirementHandlerTypes)
+        {
+            services.AddSingleton(typeof(IAuthorizationHandler), type);
         }
+
+        return services;
+    }
+
+    private static bool IsAuthorizationHandler(Type type)
+    {
+        if (type.BaseType == null)
+        {
+            return false;
+        }
+
+        if (!type.BaseType.IsGenericType)
+        {
+            return false;
+        }
+
+        var baseType = type.BaseType.GetGenericTypeDefinition();
+        return baseType == typeof(AuthorizationHandler<>) || baseType == typeof(AuthorizationHandler<,>);
     }
 }

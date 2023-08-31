@@ -1,4 +1,5 @@
-﻿using ClassifiedAds.Application.EmailMessages.Services;
+﻿using ClassifiedAds.Application;
+using ClassifiedAds.Application.EmailMessages.Commands;
 using ClassifiedAds.CrossCuttingConcerns.CircuitBreakers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -7,55 +8,54 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ClassifiedAds.BackgroundServer.HostedServices
+namespace ClassifiedAds.BackgroundServer.HostedServices;
+
+public class SendEmailWorker : BackgroundService
 {
-    public class SendEmailWorker : BackgroundService
+    private readonly IServiceProvider _services;
+    private readonly ILogger<SendEmailWorker> _logger;
+
+    public SendEmailWorker(IServiceProvider services,
+        ILogger<SendEmailWorker> logger)
     {
-        private readonly IServiceProvider _services;
-        private readonly ILogger<SendEmailWorker> _logger;
+        _services = services;
+        _logger = logger;
+    }
 
-        public SendEmailWorker(IServiceProvider services,
-            ILogger<SendEmailWorker> logger)
-        {
-            _services = services;
-            _logger = logger;
-        }
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogDebug("SendEmailService is starting.");
+        await DoWork(stoppingToken);
+    }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    private async Task DoWork(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
         {
-            _logger.LogDebug("SendEmailService is starting.");
-            await DoWork(stoppingToken);
-        }
+            _logger.LogDebug($"SendEmail task doing background work.");
 
-        private async Task DoWork(CancellationToken stoppingToken)
-        {
-            while (!stoppingToken.IsCancellationRequested)
+            try
             {
-                _logger.LogDebug($"SendEmail task doing background work.");
+                var sendEmailsCommand = new SendEmailMessagesCommand();
 
-                int rs = 0;
-
-                try
+                using (var scope = _services.CreateScope())
                 {
-                    using (var scope = _services.CreateScope())
-                    {
-                        var emailService = scope.ServiceProvider.GetRequiredService<EmailMessageService>();
+                    var dispatcher = scope.ServiceProvider.GetRequiredService<Dispatcher>();
 
-                        rs = await emailService.SendEmailMessagesAsync();
-                    }
-
-                    if (rs == 0)
-                    {
-                        await Task.Delay(10000, stoppingToken);
-                    }
+                    await dispatcher.DispatchAsync(sendEmailsCommand, stoppingToken);
                 }
-                catch (CircuitBreakerOpenException)
+
+                if (sendEmailsCommand.SentMessagesCount == 0)
                 {
                     await Task.Delay(10000, stoppingToken);
                 }
             }
-
-            _logger.LogDebug($"SendEmail background task is stopping.");
+            catch (CircuitBreakerOpenException)
+            {
+                await Task.Delay(10000, stoppingToken);
+            }
         }
+
+        _logger.LogDebug($"SendEmail background task is stopping.");
     }
 }
