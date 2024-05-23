@@ -1,10 +1,13 @@
-﻿using ClassifiedAds.Domain.Repositories;
+﻿using ClassifiedAds.Domain.Infrastructure.MessageBrokers;
+using ClassifiedAds.Domain.Repositories;
+using ClassifiedAds.Infrastructure.HostedServices;
 using ClassifiedAds.Infrastructure.Identity;
 using ClassifiedAds.Services.Storage.Authorization;
 using ClassifiedAds.Services.Storage.ConfigurationOptions;
 using ClassifiedAds.Services.Storage.DTOs;
 using ClassifiedAds.Services.Storage.Entities;
 using ClassifiedAds.Services.Storage.HostedServices;
+using ClassifiedAds.Services.Storage.MessageBusConsumers;
 using ClassifiedAds.Services.Storage.Repositories;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -38,7 +41,8 @@ public static class StorageModuleServiceCollectionExtensions
 
         services.AddStorageManager(appSettings.Storage);
 
-        services.AddMessageBusSender<FileUploadedEvent>(appSettings.MessageBroker)
+        services.AddTransient<IMessageBus, MessageBus>()
+                .AddMessageBusSender<FileUploadedEvent>(appSettings.MessageBroker)
                 .AddMessageBusSender<FileDeletedEvent>(appSettings.MessageBroker)
                 .AddMessageBusSender<AuditLogCreatedEvent>(appSettings.MessageBroker)
                 .AddMessageBusReceiver<WebhookConsumer, FileUploadedEvent>(appSettings.MessageBroker)
@@ -57,7 +61,11 @@ public static class StorageModuleServiceCollectionExtensions
 
     public static IServiceCollection AddHostedServicesStorageModule(this IServiceCollection services)
     {
-        services.AddHostedService<MessageBusReceiver>();
+        services.AddMessageBusConsumers(Assembly.GetExecutingAssembly());
+        services.AddOutboxEventPublishers(Assembly.GetExecutingAssembly());
+
+        services.AddHostedService<MessageBusConsumerBackgroundService<WebhookConsumer, FileUploadedEvent>>();
+        services.AddHostedService<MessageBusConsumerBackgroundService<WebhookConsumer, FileDeletedEvent>>();
         services.AddHostedService<PublishEventWorker>();
 
         return services;

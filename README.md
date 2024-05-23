@@ -51,6 +51,11 @@
 
 [*(open on draw.io)*](https://www.draw.io/#Uhttps%3A%2F%2Fraw.githubusercontent.com%2Fphongnguyend%2FPractical.CleanArchitecture%2Fmaster%2Fdocs%2Fimgs%2Ftesting-pyramid.drawio)
 
+# Vertical Slice Architecture (Modular Monolith)
+![alt text](/docs/imgs/vertical-slice-architecture.png)
+
+[*(open on draw.io)*](https://www.draw.io/#Uhttps%3A%2F%2Fraw.githubusercontent.com%2Fphongnguyend%2FPractical.CleanArchitecture%2Fmaster%2Fdocs%2Fimgs%2Fvertical-slice-architecture.drawio)
+
 # Solution Structure
 ![alt text](/docs/imgs/code-solution-structure.png)
 
@@ -914,5 +919,26 @@ https://github.com/phongnguyend/Practical.CleanArchitecture/wiki/Application-URL
 ## Roadmap:
 
 https://github.com/phongnguyend/Practical.CleanArchitecture/wiki/Roadmap
+
+##
+
+## Licence 🔑
+
+This repository is licensed under the [MIT](/LICENSE) license.
+
+### Duende.IdentityServer License 🔑
+
+**Duende.IdentityServer** is available under both a **FOSS (RPL) and a commercial** license. 
+
+For the production environment, it is necessary to get a specific license, if you would like more information about the licensing of **Duende.IdentityServer** - please check [this link](https://duendesoftware.com/products/identityserver#pricing).
+
+The source code under [/src/IdentityServer/Duende](/src/IdentityServer/Duende) folder uses the source code from https://github.com/DuendeSoftware/IdentityServer.Quickstart.UI which is under the terms of the following
+[**license**](https://github.com/DuendeSoftware/IdentityServer.Quickstart.UI/blob/main/LICENSE).
+
+### EPPLus License 🔑
+
+**EPPlus 5** can be used under Polyform Noncommercial license or a commercial license.
+
+For the production environment, it is necessary to get a specific license, if you would like more information about the licensing of **EPPlus 5** - please check [this link](https://www.epplussoftware.com/en/LicenseOverview).
 
 ##
