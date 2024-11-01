@@ -1,6 +1,7 @@
-﻿using ClassifiedAds.CrossCuttingConcerns.Csv;
+﻿using ClassifiedAds.Application.ConfigurationEntries.DTOs;
+using ClassifiedAds.Application.Products.DTOs;
+using ClassifiedAds.CrossCuttingConcerns.Csv;
 using ClassifiedAds.CrossCuttingConcerns.Excel;
-using ClassifiedAds.Domain.Entities;
 using ClassifiedAds.Domain.Identity;
 using ClassifiedAds.Infrastructure.Csv;
 using ClassifiedAds.Infrastructure.Excel.ClosedXML;
@@ -224,14 +225,14 @@ services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 services.AddScoped<ICurrentUser, CurrentWebUser>();
 
 services.AddStorageManager(appSettings.Storage);
-services.AddHtmlGenerator();
-services.AddDinkToPdfConverter();
+services.AddHtmlWriters();
+services.AddDinkToPdfWriters();
 services.AddClassifiedAdsLocalization();
 
-services.AddScoped(typeof(ICsvReader<>), typeof(CsvReader<>));
-services.AddScoped(typeof(ICsvWriter<>), typeof(CsvWriter<>));
-services.AddScoped<IExcelReader<List<ConfigurationEntry>>, ConfigurationEntryExcelReader>();
-services.AddScoped<IExcelWriter<List<ConfigurationEntry>>, ConfigurationEntryExcelWriter>();
+services.AddScoped<ICsvReader<ImportProductsFromCsv>, ImportProductsFromCsvHandler>();
+services.AddScoped<ICsvWriter<ExportProductsToCsv>, ExportProductsToCsvHandler>();
+services.AddScoped<IExcelReader<ImportConfigurationEntriesFromExcel>, ImportConfigurationEntriesFromExcelHandler>();
+services.AddScoped<IExcelWriter<ExportConfigurationEntriesToExcel>, ExportConfigurationEntriesToExcelHandler>();
 
 // Configure the HTTP request pipeline.
 var app = builder.Build();

@@ -1,11 +1,12 @@
 ﻿using ClassifiedAds.Application;
 using ClassifiedAds.Contracts.AuditLog.DTOs;
 using ClassifiedAds.CrossCuttingConcerns.Csv;
-using ClassifiedAds.CrossCuttingConcerns.HtmlGenerator;
-using ClassifiedAds.CrossCuttingConcerns.PdfConverter;
+using ClassifiedAds.CrossCuttingConcerns.Pdf;
 using ClassifiedAds.Modules.Product.Authorization;
 using ClassifiedAds.Modules.Product.Commands;
+using ClassifiedAds.Modules.Product.Csv;
 using ClassifiedAds.Modules.Product.Models;
+using ClassifiedAds.Modules.Product.Pdf;
 using ClassifiedAds.Modules.Product.Queries;
 using ClassifiedAds.Modules.Product.RateLimiterPolicies;
 using Microsoft.AspNetCore.Authorization;
@@ -32,22 +33,19 @@ public class ProductsController : ControllerBase
 {
     private readonly Dispatcher _dispatcher;
     private readonly ILogger _logger;
-    private readonly IHtmlGenerator _htmlGenerator;
-    private readonly IPdfConverter _pdfConverter;
-    private readonly ICsvWriter<ProductModel> _productCsvWriter;
-    private readonly ICsvReader<ProductModel> _productCsvReader;
+    private readonly IPdfWriter<ExportProductsToPdf> _pdfWriter;
+    private readonly ICsvWriter<ExportProductsToCsv> _productCsvWriter;
+    private readonly ICsvReader<ImportProductsFromCsv> _productCsvReader;
 
     public ProductsController(Dispatcher dispatcher,
         ILogger<ProductsController> logger,
-        IHtmlGenerator htmlGenerator,
-        IPdfConverter pdfConverter,
-        ICsvWriter<ProductModel> productCsvWriter,
-        ICsvReader<ProductModel> productCsvReader)
+        IPdfWriter<ExportProductsToPdf> pdfWriter,
+        ICsvWriter<ExportProductsToCsv> productCsvWriter,
+        ICsvReader<ImportProductsFromCsv> productCsvReader)
     {
         _dispatcher = dispatcher;
         _logger = logger;
-        _htmlGenerator = htmlGenerator;
-        _pdfConverter = pdfConverter;
+        _pdfWriter = pdfWriter;
         _productCsvWriter = productCsvWriter;
         _productCsvReader = productCsvReader;
     }
@@ -157,32 +155,26 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> ExportAsPdf()
     {
         var products = await _dispatcher.DispatchAsync(new GetProductsQuery());
-        var model = products.ToModels();
-
-        var template = Path.Combine(Environment.CurrentDirectory, $"Templates/ProductList.cshtml");
-        var html = await _htmlGenerator.GenerateAsync(template, model);
-        var pdf = await _pdfConverter.ConvertAsync(html);
-
-        return File(pdf, MediaTypeNames.Application.Octet, "Products.pdf");
+        var bytes = await _pdfWriter.GetBytesAsync(new ExportProductsToPdf { Products = products });
+        return File(bytes, MediaTypeNames.Application.Octet, "Products.pdf");
     }
 
     [HttpGet("exportascsv")]
     public async Task<IActionResult> ExportAsCsv()
     {
         var products = await _dispatcher.DispatchAsync(new GetProductsQuery());
-        var model = products.ToModels();
         using var stream = new MemoryStream();
-        _productCsvWriter.Write(model, stream);
+        await _productCsvWriter.WriteAsync(new ExportProductsToCsv { Products = products }, stream);
         return File(stream.ToArray(), MediaTypeNames.Application.Octet, "Products.csv");
     }
 
     [HttpPost("importcsv")]
-    public IActionResult ImportCsv([FromForm] UploadFileModel model)
+    public async Task<IActionResult> ImportCsv([FromForm] UploadFileModel model)
     {
         using var stream = model.FormFile.OpenReadStream();
-        var products = _productCsvReader.Read(stream);
+        var result = await _productCsvReader.ReadAsync(stream);
 
         // TODO: import to database
-        return Ok(products);
+        return Ok(result.Products);
     }
 }
